@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: newlab2-deployment
+  labels:
+    app: newlab2
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: newlab2
+  template:
+    metadata:
+      labels:
+        app: newlab2
+    spec:
+      containers:
+      - name: newlab2-container
+        image: docker.io/vinodgangwar92/newlab2:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
