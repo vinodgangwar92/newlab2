@@ -2,10 +2,8 @@ pipeline {
     agent any
 
     environment {
-        // Replace with your Docker Hub user
         DOCKER_REGISTRY = "docker.io/vinodgangwar92"
         IMAGE_NAME = "newlab2"
-        // Jenkins stored credentials ID (username + password/token)
         CREDENTIALS_ID = "dockerhub-creds"
     }
 
@@ -52,14 +50,23 @@ pipeline {
             }
         }
 
+        stage('Deploy To Kubernetes') {
+            steps {
+                bat '''
+                echo Deploying to Kubernetes...
+                kubectl apply -f deployment.yml
+                kubectl apply -f service.yml
+                '''
+            }
+        }
     }
 
     post {
         success {
-            echo "Docker build & push completed successfully!"
+            echo "✔ Build, push & Kubernetes deploy succeeded!"
         }
         failure {
-            echo "Build or push failed — check logs above."
+            echo "❌ Pipeline failed — check logs for details."
         }
     }
 }
