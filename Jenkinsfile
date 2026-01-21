@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "shivsoftapp/admin-dashboard"   // update with your DockerHub repo
-        IMAGE_TAG  = "${env.BUILD_NUMBER}"          // unique per build
+        IMAGE_NAME = "shivsoftapp/admin-dashboard"
+        IMAGE_TAG  = "${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -16,7 +16,9 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                bat """
+                docker build -t %IMAGE_NAME%:%IMAGE_TAG% .
+                """
             }
         }
 
@@ -27,9 +29,9 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh """
-                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    bat """
+                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                    docker push %IMAGE_NAME%:%IMAGE_TAG%
                     """
                 }
             }
@@ -37,18 +39,19 @@ pipeline {
 
         stage('Update k8s Deployment') {
             steps {
-                script {
-                    // Replace placeholder in k8s deployment.yaml with the new image
-                    sh "sed -i 's|IMAGE_NAME_PLACEHOLDER|${IMAGE_NAME}:${IMAGE_TAG}|g' k8s/deployment.yaml"
-                }
+                powershell """
+                $image = "$env:IMAGE_NAME`:$env:IMAGE_TAG"
+                (Get-Content k8s\\deployment.yaml) -replace "IMAGE_NAME_PLACEHOLDER", $image |
+                  Set-Content k8s\\deployment.yaml
+                """
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    sh """
-                    export KUBECONFIG=${KUBECONFIG}
+                    bat """
+                    set KUBECONFIG=%KUBECONFIG%
                     kubectl apply -f k8s/deployment.yaml
                     kubectl apply -f k8s/service.yaml
                     """
@@ -60,10 +63,10 @@ pipeline {
 
     post {
         success {
-            echo "Deployed successfully!"
+            echo "Deployment succeeded!"
         }
         failure {
-            echo "Pipeline failed."
+            echo "Pipeline failed!"
         }
     }
 }
