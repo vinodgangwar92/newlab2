@@ -1,22 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: newlab2-deployment
+  name: admin-dashboard-deployment
   labels:
-    app: newlab2
+    app: admin-dashboard
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: newlab2
+      app: admin-dashboard
   template:
     metadata:
       labels:
-        app: newlab2
+        app: admin-dashboard
     spec:
       containers:
-      - name: newlab2-container
-        image: docker.io/vinodgangwar92/newlab2:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 80
+        - name: admin-dashboard-container
+          image: vinodgangwar92/latest
+          ports:
+            - containerPort: 80
