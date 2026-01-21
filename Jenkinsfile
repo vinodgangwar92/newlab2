@@ -42,9 +42,9 @@ pipeline {
             steps {
                 powershell '''
                 $image = "$env:IMAGE_NAME`:$env:IMAGE_TAG"
-                (Get-Content k8s\\deployment.yaml) `
+                (Get-Content deployment.yaml) `
                   -replace "IMAGE_NAME", $image |
-                Set-Content k8s\\deployment.yaml
+                Set-Content deployment.yaml
                 '''
             }
         }
