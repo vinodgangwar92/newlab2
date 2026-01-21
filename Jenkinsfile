@@ -1,92 +1,69 @@
 pipeline {
-    agent {
-        kubernetes {
-            // Optional: reference an existing Kubernetes cloud configured in Jenkins
-            // cloud 'kubernetes'
-
-            // Here we declare basic pod containers
-            yaml """
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    app: jenkins-agent
-spec:
-  containers:
-  - name: docker
-    image: docker:24.0.0
-    command:
-    - cat
-    tty: true
-    volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
-  - name: kubectl
-    image: bitnami/kubectl:latest
-    command:
-    - cat
-    tty: true
-  volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
-"""
-        }
-    }
+    agent any
 
     environment {
-        DOCKER_IMAGE = "your-dockerhub-user/your-app:${env.BUILD_NUMBER}"
-        KUBE_CONFIG_CRED = credentials('kubeconfig-id') // Jenkins credential holding kubeconfig
+        IMAGE_NAME = "shivsoftapp/admin-dashboard"   // update with your DockerHub repo
+        IMAGE_TAG  = "${env.BUILD_NUMBER}"          // unique per build
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Checkout Code') {
             steps {
-                checkout scm
+                git url: 'https://github.com/vinodgangwar92/newlab2.git', branch: 'main'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Docker Build') {
             steps {
-                container('docker') {
-                    sh '''
-                      docker build -t $DOCKER_IMAGE .
-                    '''
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        stage('Docker Login & Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    """
                 }
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Update k8s Deployment') {
             steps {
-                container('docker') {
-                    sh '''
-                      echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-                      docker push $DOCKER_IMAGE
-                    '''
+                script {
+                    // Replace placeholder in k8s deployment.yaml with the new image
+                    sh "sed -i 's|IMAGE_NAME_PLACEHOLDER|${IMAGE_NAME}:${IMAGE_TAG}|g' k8s/deployment.yaml"
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                container('kubectl') {
-                    withCredentials([file(credentialsId: 'kubeconfig-id', variable: 'KUBECONFIG')]) {
-                        sh '''
-                          kubectl set image deployment/my-deployment my-container=$DOCKER_IMAGE
-                          kubectl rollout status deployment/my-deployment
-                        '''
-                    }
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh """
+                    export KUBECONFIG=${KUBECONFIG}
+                    kubectl apply -f k8s/deployment.yaml
+                    kubectl apply -f k8s/service.yaml
+                    """
                 }
             }
         }
+
     }
 
     post {
         success {
-            echo "Deployment successful!"
+            echo "Deployed successfully!"
         }
         failure {
-            echo "Pipeline failed!"
+            echo "Pipeline failed."
         }
     }
 }
