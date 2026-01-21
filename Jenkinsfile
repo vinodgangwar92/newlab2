@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "shivsoftapp/admin-dashboard"
+        // Use your actual Docker Hub username here
+        IMAGE_NAME = "vinodgangwar92/admin-dashboard"
         IMAGE_TAG  = "${env.BUILD_NUMBER}"
     }
 
@@ -40,8 +41,8 @@ pipeline {
         stage('Update k8s Deployment') {
             steps {
                 powershell """
-                $image = "$env:IMAGE_NAME`:$env:IMAGE_TAG"
-                (Get-Content k8s\\deployment.yaml) -replace "IMAGE_NAME_PLACEHOLDER", $image |
+                $img = "$env:IMAGE_NAME`:$env:IMAGE_TAG"
+                (Get-Content k8s\\deployment.yaml) -replace "IMAGE_NAME_PLACEHOLDER", $img |
                   Set-Content k8s\\deployment.yaml
                 """
             }
