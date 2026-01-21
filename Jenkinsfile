@@ -2,21 +2,24 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "vinodgangwar92/admin-dashboard"
-        IMAGE_TAG  = "${env.BUILD_NUMBER}"
+        IMAGE_NAME = "vinodgangwar92/latest"
+        IMAGE_TAG  = "039"
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Checkout Code from GitLab') {
             steps {
-                git url: 'https://github.com/vinodgangwar92/newlab2.git', branch: 'main'
+                git branch: 'main',
+                    url: 'https://gitlab.com/SOFTAPP-TECHNOLOGIES/k8s-jenkins-cicd-pipeline.git'
             }
         }
 
         stage('Docker Build') {
             steps {
-                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
+                bat '''
+                docker build -t %IMAGE_NAME%:%IMAGE_TAG% .
+                '''
             }
         }
 
@@ -27,45 +30,39 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat """
+                    bat '''
                     echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
                     docker push %IMAGE_NAME%:%IMAGE_TAG%
-                    """
+                    '''
                 }
             }
         }
 
-        stage('Update k8s Deployment') {
+        stage('Update Kubernetes Image in YAML') {
             steps {
-                powershell """
-                # Replace a placeholder in deployment.yaml with the new image
-                $env:IMAGE_NAME_TAG = "$env:IMAGE_NAME`:$env:IMAGE_TAG"
-                (Get-Content .\\k8s\\deployment.yaml) | 
-                  ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', \$env:IMAGE_NAME_TAG } |
-                  Set-Content .\\k8s\\deployment.yaml
-                """
+                powershell '''
+                $image = "$env:IMAGE_NAME`:$env:IMAGE_TAG"
+                (Get-Content k8s\\deployment.yaml) `
+                  -replace "IMAGE_NAME", $image |
+                Set-Content k8s\\deployment.yaml
+                '''
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    bat """
+                    bat '''
                     set KUBECONFIG=%KUBECONFIG%
-                    kubectl apply -f k8s\\deployment.yaml
-                    kubectl apply -f k8s\\service.yaml
-                    """
+
+                    kubectl get nodes || exit /b 1
+
+                    kubectl apply -f deployment.yaml || exit /b 1
+                    kubectl apply -f service.yaml || exit /b 1
+                    '''
                 }
             }
         }
-    }
 
-    post {
-        success {
-            echo "Deployment to Kubernetes succeeded!"
-        }
-        failure {
-            echo "Pipeline failed, check logs."
-        }
     }
 }
