@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        // Use your actual Docker Hub username here
         IMAGE_NAME = "vinodgangwar92/admin-dashboard"
         IMAGE_TAG  = "${env.BUILD_NUMBER}"
     }
@@ -17,9 +16,7 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                bat """
-                docker build -t %IMAGE_NAME%:%IMAGE_TAG% .
-                """
+                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
             }
         }
 
@@ -41,9 +38,11 @@ pipeline {
         stage('Update k8s Deployment') {
             steps {
                 powershell """
-                $img = "$env:IMAGE_NAME`:$env:IMAGE_TAG"
-                (Get-Content k8s\\deployment.yaml) -replace "IMAGE_NAME_PLACEHOLDER", $img |
-                  Set-Content k8s\\deployment.yaml
+                # Replace a placeholder in deployment.yaml with the new image
+                $env:IMAGE_NAME_TAG = "$env:IMAGE_NAME`:$env:IMAGE_TAG"
+                (Get-Content .\\k8s\\deployment.yaml) | 
+                  ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', \$env:IMAGE_NAME_TAG } |
+                  Set-Content .\\k8s\\deployment.yaml
                 """
             }
         }
@@ -53,21 +52,20 @@ pipeline {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     bat """
                     set KUBECONFIG=%KUBECONFIG%
-                    kubectl apply -f k8s/deployment.yaml
-                    kubectl apply -f k8s/service.yaml
+                    kubectl apply -f k8s\\deployment.yaml
+                    kubectl apply -f k8s\\service.yaml
                     """
                 }
             }
         }
-
     }
 
     post {
         success {
-            echo "Deployment succeeded!"
+            echo "Deployment to Kubernetes succeeded!"
         }
         failure {
-            echo "Pipeline failed!"
+            echo "Pipeline failed, check logs."
         }
     }
 }
