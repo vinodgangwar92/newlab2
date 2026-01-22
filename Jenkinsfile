@@ -41,9 +41,12 @@ pipeline {
         stage('Update deployment.yaml') {
             steps {
                 powershell """
-                $newImage = "${env:IMAGE_NAME}:${env:IMAGE_TAG}"
+                # Construct full image tag inside PowerShell
+                $fullImage = "${env:IMAGE_NAME}:${env:IMAGE_TAG}"
+
+                # Replace placeholder in deployment.yaml
                 (Get-Content .\\deployment.yaml) |
-                  ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', \$newImage } |
+                  ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', \$fullImage } |
                   Set-Content .\\deployment.yaml
                 """
             }
