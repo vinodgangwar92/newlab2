@@ -10,6 +10,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
+                // Checkout from GitHub
                 git branch: 'main',
                     url: 'https://github.com/vinodgangwar92/newlab2.git'
             }
@@ -41,15 +42,13 @@ pipeline {
         stage('Update deployment.yaml') {
             steps {
                 powershell """
-                # Compute full image name
-                $fullImage = \"${env:IMAGE_NAME}:${env:IMAGE_TAG}\"
+                # Build full image name inside PowerShell
+                $img = \"${env:IMAGE_NAME}:${env:IMAGE_TAG}\"
 
-                # Replacement run — ONLY inside PowerShell
+                # Replace placeholder in deployment.yaml
                 (Get-Content .\\deployment.yaml) |
-                  ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', \$fullImage } |
+                  ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', \$img } |
                   Set-Content .\\deployment.yaml
-
-                Write-Host \"Updated deployment.yaml with image: $fullImage\"
                 """
             }
         }
@@ -69,10 +68,10 @@ pipeline {
 
     post {
         success {
-            echo "Deployment to Kubernetes succeeded!"
+            echo "Deployment succeeded!"
         }
         failure {
-            echo "Pipeline failed — check above logs!"
+            echo "Pipeline failed — check logs above."
         }
     }
 }
