@@ -2,21 +2,24 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "vinodgangwar92/latest"
-        IMAGE_TAG  = "${env.BUILD_NUMBER}"
+        IMAGE_NAME = "shivsoftapp/admin-dashbaord"
+        IMAGE_TAG  = "039"
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Checkout Code from GitLab') {
             steps {
-                git url: 'https://github.com/vinodgangwar92/newlab2.git', branch: 'main'
+                git branch: 'main',
+                    url: 'https://gitlab.com/SOFTAPP-TECHNOLOGIES/k8s-jenkins-cicd-pipeline.git'
             }
         }
 
         stage('Docker Build') {
             steps {
-                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
+                bat '''
+                docker build -t %IMAGE_NAME%:%IMAGE_TAG% .
+                '''
             }
         }
 
@@ -27,49 +30,39 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat """
+                    bat '''
                     echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
                     docker push %IMAGE_NAME%:%IMAGE_TAG%
-                    """
+                    '''
                 }
             }
         }
 
-        stage('Update deployment.yaml') {
+        stage('Update Kubernetes Image in YAML') {
             steps {
-                powershell """
-                # Build full image name inside PowerShell
-                $newImage = "${env:IMAGE_NAME}:${env:IMAGE_TAG}"
-
-                # Replace placeholder text in deployment.yaml
-                (Get-Content .\\deployment.yaml) |
-                  ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', \$newImage } |
-                  Set-Content .\\deployment.yaml
-                """
+                powershell '''
+                $image = "$env:IMAGE_NAME`:$env:IMAGE_TAG"
+                (Get-Content deployment.yaml) `
+                  -replace "IMAGE_NAME", $image |
+                Set-Content deployment.yaml
+                '''
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    bat """
+                    bat '''
                     set KUBECONFIG=%KUBECONFIG%
-                    kubectl get nodes
-                    kubectl apply -f deployment.yaml
-                    kubectl apply -f service.yaml
-                    """
+
+                    kubectl get nodes || exit /b 1
+
+                    kubectl apply -f deployment.yaml || exit /b 1
+                    kubectl apply -f service.yaml || exit /b 1
+                    '''
                 }
             }
         }
 
-    }
-
-    post {
-        success {
-            echo "Deployment succeeded!"
-        }
-        failure {
-            echo "Pipeline failed!"
-        }
     }
 }
