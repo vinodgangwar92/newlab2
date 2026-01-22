@@ -38,21 +38,13 @@ pipeline {
         stage('Update deployment.yaml') {
             steps {
                 powershell """
-                $fullImage = "$env:IMAGE_NAME`:$env:IMAGE_TAG"
-                (Get-Content .\\deployment.yaml) |
-                  ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', \$fullImage } |
-                  Set-Content .\\deployment.yaml
-                """
-            }
-        }
+                # Build full image name inside PowerShell
+                $newImage = "${env:IMAGE_NAME}:${env:IMAGE_TAG}"
 
-        stage('Update service.yaml') {
-            steps {
-                powershell """
-                # (Optional) If service.yaml has any image placeholder, update it here
-                (Get-Content .\\service.yaml) |
-                  ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', '$env:IMAGE_NAME`:$env:IMAGE_TAG' } |
-                  Set-Content .\\service.yaml
+                # Replace placeholder text in deployment.yaml
+                (Get-Content .\\deployment.yaml) |
+                  ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', \$newImage } |
+                  Set-Content .\\deployment.yaml
                 """
             }
         }
