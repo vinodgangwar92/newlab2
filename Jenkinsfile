@@ -41,15 +41,15 @@ pipeline {
         stage('Update deployment.yaml') {
             steps {
                 powershell """
-                # Compute full image name inside PowerShell
+                # Compute full image name
                 $fullImage = \"${env:IMAGE_NAME}:${env:IMAGE_TAG}\"
 
-                Write-Host \"Updating deployment.yaml with image: $fullImage\"
-
-                # Replace the placeholder in deployment.yaml
+                # Replacement run — ONLY inside PowerShell
                 (Get-Content .\\deployment.yaml) |
                   ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', \$fullImage } |
                   Set-Content .\\deployment.yaml
+
+                Write-Host \"Updated deployment.yaml with image: $fullImage\"
                 """
             }
         }
@@ -59,7 +59,6 @@ pipeline {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     bat """
                     set KUBECONFIG=%KUBECONFIG%
-                    kubectl get nodes
                     kubectl apply -f deployment.yaml
                     kubectl apply -f service.yaml
                     """
@@ -70,10 +69,10 @@ pipeline {
 
     post {
         success {
-            echo "Deployment succeeded!"
+            echo "Deployment to Kubernetes succeeded!"
         }
         failure {
-            echo "Pipeline failed — check the logs above."
+            echo "Pipeline failed — check above logs!"
         }
     }
 }
