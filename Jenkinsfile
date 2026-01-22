@@ -41,14 +41,14 @@ pipeline {
         stage('Update deployment.yaml') {
             steps {
                 powershell """
-                # Build the full image name inside PowerShell
-                $fullImage = "${env:IMAGE_NAME}:${env:IMAGE_TAG}"
+                # Compute full image name inside PowerShell
+                $fullImage = \"${env:IMAGE_NAME}:${env:IMAGE_TAG}\"
 
-                Write-Host "Updating deployment.yaml with image: $fullImage"
+                Write-Host \"Updating deployment.yaml with image: $fullImage\"
 
-                # Replace IMAGE_NAME_PLACEHOLDER with the actual image
+                # Replace the placeholder in deployment.yaml
                 (Get-Content .\\deployment.yaml) |
-                  ForEach-Object { $_ -replace 'IMAGE_NAME_PLACEHOLDER', \$fullImage } |
+                  ForEach-Object { \$_ -replace 'IMAGE_NAME_PLACEHOLDER', \$fullImage } |
                   Set-Content .\\deployment.yaml
                 """
             }
@@ -70,10 +70,10 @@ pipeline {
 
     post {
         success {
-            echo "Deployment completed successfully!"
+            echo "Deployment succeeded!"
         }
         failure {
-            echo "Pipeline failed — check logs."
+            echo "Pipeline failed — check the logs above."
         }
     }
 }
