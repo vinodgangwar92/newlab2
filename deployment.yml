@@ -16,6 +16,6 @@ spec:
     spec:
       containers:
         - name: admin-dashboard-container
-          image: vinodgangwar92/latest
+          image: IMAGE_NAME_PLACEHOLDER
           ports:
             - containerPort: 80
