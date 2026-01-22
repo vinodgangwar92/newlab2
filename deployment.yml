@@ -15,7 +15,7 @@ spec:
         app: admin-dashboard
     spec:
       containers:
-        - name: admin-dashboard-container
-          image: IMAGE_NAME_PLACEHOLDER
-          ports:
-            - containerPort: 80
+      - name: admin-dashboard-container
+        image: IMAGE_NAME_PLACEHOLDER
+        ports:
+        - containerPort: 80
