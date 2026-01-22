@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout Code from GitLab') {
             steps {
                 git branch: 'main',
-                    url: 'https://gitlab.com/SOFTAPP-TECHNOLOGIES/k8s-jenkins-cicd-pipeline.git'
+                    url: 'https://gitlab.com/SOFTAPP-TECHNOLOGIES/jenkins-cicd-pipeline.git'
             }
         }
 
